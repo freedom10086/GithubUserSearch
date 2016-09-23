@@ -33,6 +33,7 @@ public class ApiClient {
     private static final String BASE_URL = "https://api.github.com";
     private static final String URL_SEARCH_USER = BASE_URL+"/search/users";
     //my github access token to avoid 403 forbidden
+    //is tiken is wrong response code is 401
     private static final String TOKEN = "a595fa6c0ca565e6ea5342429d2c2cdbfbf513e0";
 
     private  final ExecutorService threadPool;
@@ -60,7 +61,7 @@ public class ApiClient {
         threadPool.execute(new Runnable() {
             @Override
             public void run() {
-                String res =  httpGet(URL_SEARCH_USER,params);
+                String res =  httpGet(URL_SEARCH_USER,params,handler);
                 if(res!=null){
                     JSONObject object = null;
                     try {
@@ -80,10 +81,7 @@ public class ApiClient {
                         e.printStackTrace();
                         handler.sendMsg(ApiResponse.MSG_FAILER,e.getMessage());
                     }
-                }else{
-                    handler.sendMsg(ApiResponse.MSG_FAILER,"no data");
                 }
-
             }
         });
     }
@@ -96,7 +94,7 @@ public class ApiClient {
         threadPool.execute(new Runnable() {
             @Override
             public void run() {
-                String res =  httpGet(url,null);
+                String res =  httpGet(url,null,handler);
                 if(res!=null){
                     try {
                         List<Repo> temps = new ArrayList<>();
@@ -113,8 +111,6 @@ public class ApiClient {
                         e.printStackTrace();
                         handler.sendMsg(ApiResponse.MSG_FAILER,e.getMessage());
                     }
-                }else{
-                    handler.sendMsg(ApiResponse.MSG_FAILER,"no data");
                 }
             }
         });
@@ -142,7 +138,7 @@ public class ApiClient {
     /**
      * http get 方法获得数据
      */
-    private static String httpGet(String url, Map<String,String> params) {
+    private static String httpGet(String url, Map<String,String> params,final ApiResponse handler) {
         HttpURLConnection conn = null;
         if(params==null){
             params = new HashMap<>();
@@ -158,10 +154,9 @@ public class ApiClient {
             URL mURL = new URL(url);
             conn = (HttpURLConnection) mURL.openConnection();
             conn.setRequestMethod("GET");
-            conn.setReadTimeout(2000);
+            conn.setReadTimeout(3000);
             conn.setConnectTimeout(5000);
             int responseCode = conn.getResponseCode();
-
 
             if (responseCode == 200) {
                 InputStream is = conn.getInputStream();
@@ -175,17 +170,17 @@ public class ApiClient {
                 os.close();
                 return os.toString();
             }else{
-                Log.e("rescode","error responseCode is :"+responseCode);
+                handler.sendMsg(ApiResponse.MSG_FAILER,"http error response code is "+responseCode);
                 return null;
             }
         } catch (Exception e) {
+            handler.sendMsg(ApiResponse.MSG_FAILER,e.getMessage());
             e.printStackTrace();
         } finally {
             if (conn != null) {
                 conn.disconnect();
             }
         }
-
         return null;
     }
 }
